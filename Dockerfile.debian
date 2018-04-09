@@ -1,13 +1,29 @@
-from alpine as build
+from debian as golang
+RUN apt-get update
+RUN apt-get install -y git golang
+RUN git clone https://go.googlesource.com/go
+WORKDIR /go
+RUN git checkout release-branch.go1.10
+WORKDIR /go/src
+RUN ./all.bash
 
-RUN apk add --update git go musl-dev
 
+
+##########################
+from debian as build
+
+RUN apt-get update 
+RUN apt-get install -y  git 
+
+COPY --from=golang /go /go-bin
+ENV PATH=/go-bin/bin:$PATH
+
+ENV GOROOT=/go-bin
 ENV GOPATH=/go
 ENV GOBIN=/go/bin
 ENV PATH=$PATH:/go/bin
 
 RUN go get -u github.com/influxdata/influxdb
-
 WORKDIR /go/src/github.com/influxdata/influxdb/cmd/influxd
 RUN go get
 RUN go install
@@ -17,8 +33,7 @@ RUN go get
 RUN go install
 
 ########################
-FROM alpine as main
-RUN apk add --update bash
+FROM debian as main
 COPY --from=build /go/bin/influx* /usr/bin/
 ADD influxdb.conf /etc/influxdb/influxdb.conf
 
